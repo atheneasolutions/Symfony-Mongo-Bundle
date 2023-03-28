@@ -1,0 +1,28 @@
+services:
+
+  athenea.mongo.mongo_service:
+    class: Athenea\Mongo\Service\MongoService
+    arguments:
+      $logger: "@?logger"
+      $url: mongodb://localhost:2700
+      $defaultDb: urgencies
+      $log: false
+      $stopwatch: '@?debug.stopwatch'
+    tags:
+      - { name: monolog.logger, channel: athenea.mongo }
+  Athenea\Mongo\Service\MongoService:
+    alias: athenea.mongo.mongo_service
+  
+  athenea.mongo.mongo_base.normalizer:
+    class: Athenea\Mongo\Serializer\MongoBase\MongoBaseNormalizer
+    tags: ['serializer.normalizer']
+    arguments:
+      $normalizer: '@?serializer.normalizer.object'
+  Athenea\Mongo\Serializer\MongoBase\MongoBaseNormalizer:
+    alias: athenea.mongo.mongo_base.normalizer
+  
+  athenea.mongo.object_id.normalizer:
+    class: Athenea\Mongo\Serializer\MongoObjectId\MongoObjectIdNormalizer
+    tags: ['serializer.normalizer']
+  Athenea\Mongo\Serializer\MongoObjectIdNormalizer\MongoBaseNormalizer:
+    alias: athenea.mongo.object_id.normalizer

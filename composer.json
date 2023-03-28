@@ -1,0 +1,33 @@
+{
+    "name": "athenea/mongo-bundle",
+    "type": "symfony-bundle",
+    "description": "Bundle to use MongoDB in mongo apps",
+    "autoload": {
+        "psr-4": {
+            "Athenea\\Mongo\\": "src/"
+        },
+        "autoload-dev": {
+            "psr-4": {
+                "Athenea\\Mongo\\": "tests/"
+            }
+        }
+    },
+    "authors": [
+        {
+            "name": "Lluc Bové",
+            "email": "lluc.bove@atheneasolutions.com"
+        }
+    ],
+    "require": {
+        "athenea/mongo-lib": "^1.1",
+        "php": ">=8.0",
+        "symfony/config": "^6.0",
+        "symfony/dependency-injection": "^6.0",
+        "symfony/http-kernel": "^6.0",
+        "symfony/yaml": "^6.0",
+        "symfony/stopwatch": "^6.2"
+    },
+    "require-dev": {
+        "soyuka/stubs-mongodb": "^1.0"
+    }
+}
