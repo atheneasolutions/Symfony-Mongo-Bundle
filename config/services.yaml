@@ -26,3 +26,11 @@ services:
     tags: ['serializer.normalizer']
   Athenea\Mongo\Serializer\MongoObjectIdNormalizer\MongoBaseNormalizer:
     alias: athenea.mongo.object_id.normalizer
+
+  athenea.mongo.object_id.denormalizer:
+    class: Athenea\Mongo\Serializer\MongoObjectId\MongoObjectIdDenormalizer
+    tags: ['serializer.normalizer']
+    arguments:
+      $denormalizer: '@?serializer.normalizer.object'
+  Athenea\Mongo\Serializer\MongoObjectIdNormalizer\MongoObjectIdDenormalizer:
+    alias: athenea.mongo.object_id.denormalizer

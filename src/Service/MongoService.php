@@ -163,4 +163,22 @@ class MongoService
         $response->setContent($contents);
         return $response;
     }
+
+    public function uploadFile(string $name, $file, string $mime, string $app, string $tag, string $user): ?ObjectId
+    {
+        return $this->gridFsBucket()->uploadFromStream($name, $file, [
+            'metadata' => [
+                'app' => $app,
+                'tag' => $tag,
+                'user' => $user,
+                'mime' => $mime
+            ]
+        ]);
+    }
+
+    public function fileMetadata(ObjectId $id){
+        $doc = $this->gridFsBucket()->findOne(['_id' => $id], options: ['typeMap' => ['root' => 'array', 'document' => 'array', 'array' => 'array']]);
+        return $doc;
+    }
+
 }

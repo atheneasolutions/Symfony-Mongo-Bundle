@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "cc27c09b3e37d96bad42fca24bd6385a",
+    "content-hash": "26eeffbe990ef27d11f190076e55639f",
     "packages": [
         {
             "name": "athenea/mongo-lib",
@@ -53,6 +53,46 @@
                 "source": "https://github.com/atheneasolutions/php-mongo-lib/tree/1.1.12"
             },
             "time": "2023-03-09T10:14:29+00:00"
+        },
+        {
+            "name": "athenea/utils",
+            "version": "1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/atheneasolutions/PHP-Utils.git",
+                "reference": "8485cb1db46aa9ffb7b1e3a35406cac1dd719690"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/atheneasolutions/PHP-Utils/zipball/8485cb1db46aa9ffb7b1e3a35406cac1dd719690",
+                "reference": "8485cb1db46aa9ffb7b1e3a35406cac1dd719690",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.4"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "array.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Lluc Bové",
+                    "email": "lluc.bove@atheneasolutions.com"
+                }
+            ],
+            "description": "PHP general utilities for Athenea Solutions",
+            "support": {
+                "issues": "https://github.com/atheneasolutions/PHP-Utils/issues",
+                "source": "https://github.com/atheneasolutions/PHP-Utils/tree/1.0"
+            },
+            "time": "2023-03-06T15:21:37+00:00"
         },
         {
             "name": "jean85/pretty-package-versions",
