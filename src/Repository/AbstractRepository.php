@@ -234,6 +234,7 @@ abstract class AbstractRepository
 
     private function bsonNormalizeGeneric($x): ?MongoBase
     {
+        if(is_null($x)) return null;
         $class = $this->getDiscriminatorClass($x);
         $obj = new $class();
         $obj->bsonUnserialize($x);
