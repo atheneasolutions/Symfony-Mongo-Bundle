@@ -19,7 +19,7 @@
         }
     ],
     "require": {
-        "athenea/mongo-lib": "^1.1",
+        "athenea/mongo-lib": "^1.1.16",
         "php": ">=8.0",
         "symfony/config": "^6.0",
         "symfony/dependency-injection": "^6.0",

@@ -3,7 +3,6 @@
 namespace Athenea\Mongo\Repository;
 
 use Athenea\Mongo\Model\MongoBase;
-use Athenea\Mongo\Serializer\MongoBase\MongoBaseNormalizer;
 use Athenea\Mongo\Service\MongoService;
 use Athenea\MongoLib\Utils;
 use DateTime;
@@ -16,6 +15,8 @@ use MongoDB\InsertManyResult;
 use MongoDB\InsertOneResult;
 use MongoDB\Operation\FindOneAndReplace;
 use MongoDB\UpdateResult;
+use ReflectionClass;
+use Symfony\Component\Serializer\Annotation\DiscriminatorMap;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -40,6 +41,9 @@ abstract class AbstractRepository
      */
     protected Collection $collection;
 
+    protected ?DiscriminatorMap $discriminatorMap = null;
+    protected bool $classIsAbstract = false;
+
     /**
      * @param MongoService $mongo servei de mongo per interectuar amb la BBDD
      */
@@ -53,6 +57,12 @@ abstract class AbstractRepository
         if(! is_a($class, MongoBase::class, true)) throw new Exception("$class is not an instance of Athenea\Mongo\Model\MongoBase");
         $colName = $class::collectionName();
         $this->collection = $this->mongo->selectCollection($colName);
+
+        $reflectionClass = new ReflectionClass($class);
+        $discr = $reflectionClass->getAttributes(DiscriminatorMap::class)[0] ?? null;
+        if($discr) $this->discriminatorMap = $discr->newInstance();
+        $this->classIsAbstract = $reflectionClass->isAbstract();
+
     }
 
     /**
@@ -73,8 +83,7 @@ abstract class AbstractRepository
     public final function findById(string $id)
     {
         if(!preg_match("/[a-fA-F0-9]{24}/", $id)) return null;
-        $options = $this->mergeTypeMapOptions([]);
-        return $this->collection->findOne([ '_id' => oid($id) ], $options);
+        return $this->findByObjectId(oid($id));
     }
 
     /**
@@ -84,8 +93,7 @@ abstract class AbstractRepository
      */
     public final function findByObjectId(ObjectId $id)
     {
-        $options = $this->mergeTypeMapOptions([]);
-        return $this->collection->findOne([ '_id' => $id ], $options);
+        return $this->findOne([ '_id' => $id ]);
     }
 
     /**
@@ -98,7 +106,8 @@ abstract class AbstractRepository
     public final function find(array $filter = [], array $options = [])
     {
         $options = $this->mergeTypeMapOptions($options);
-        return $this->collection->find($filter, $options);
+        $result =  $this->collection->find($filter, $options);
+        return $this->discriminatorMap ? $this->bsonNormalizeIterable($result) : $result;
     }
 
     /**
@@ -111,7 +120,8 @@ abstract class AbstractRepository
     public final function findOne(array $filter = [], array $options = []): ?MongoBase
     {
         $options = $this->mergeTypeMapOptions($options);
-        return $this->collection->findOne($filter, $options);
+        $result =  $this->collection->findOne($filter, $options);
+        return $this->discriminatorMap ? $this->bsonNormalizeGeneric($result) : $result;
     }
 
     /**
@@ -189,7 +199,6 @@ abstract class AbstractRepository
      */
     public final function insertOne(?MongoBase $doc = null, array $options = []): InsertOneResult
     {
-        $options = $this->mergeTypeMapOptions($options);
         return $this->collection->insertOne($doc, $options);
     }
 
@@ -202,7 +211,6 @@ abstract class AbstractRepository
      */
     public final function insertMany(array $docs = null, array $options = []): InsertManyResult
     {
-        $options = $this->mergeTypeMapOptions($options);
         return $this->collection->insertMany($docs, $options);
     }
 
@@ -220,7 +228,21 @@ abstract class AbstractRepository
         $options['upsert'] ??= true;
         $options['returnDocument'] ??= FindOneAndReplace::RETURN_DOCUMENT_AFTER;
         $options = $this->mergeTypeMapOptions($options);
-        return $this->collection->findOneAndReplace($filter, $doc, $options);
+        $result =  $this->collection->findOneAndReplace($filter, $doc, $options);
+        return $this->discriminatorMap ? $this->bsonNormalizeGeneric($result) : $result;
+    }
+
+    private function bsonNormalizeGeneric($x): ?MongoBase
+    {
+        $class = $this->getDiscriminatorClass($x);
+        $obj = new $class();
+        $obj->bsonUnserialize($x);
+        return $obj;
+    }
+    private function bsonNormalizeIterable($iterable){
+        foreach($iterable as $i){
+            yield $this->bsonNormalizeGeneric($i);
+        } 
     }
 
     /**
@@ -249,7 +271,7 @@ abstract class AbstractRepository
         else {
             $updatedDoc = $this->findById($doc->getId());
             if($updatedDoc){
-                $normalized = $this->normalizer->normalize($updatedDoc, null, [MongoBaseNormalizer::IGNORE => true]);
+                $normalized = $this->normalizer->normalize($updatedDoc, null);
                 $this->denormalizer->denormalize($normalized, $doc::class, null, [AbstractNormalizer::OBJECT_TO_POPULATE => $doc] );
             }
         }
@@ -260,13 +282,26 @@ abstract class AbstractRepository
         $result =  $this->getCollection()->aggregate($pipeline, $options);
         foreach($result as $r){
             $n = $this->normalizeGeneric($r);
-            $class = $this->modelClass();
-            $object = new $class();
-            $object->bsonUnserialize($n);
+            $object = $this->bsonNormalizeGeneric($n);
             yield $object;
         }
-
     }
+
+    protected function getDiscriminatorClass($data){
+        if(!$this->discriminatorMap) return $this->modelClass();
+        $property = $this->discriminatorMap->getTypeProperty();
+        $field = $this->accesGeneric($data, $property);
+        $class = $this->discriminatorMap->getMapping()[$field] ?? null;
+        if(!$class && !$this->classIsAbstract) return $this->modelClass();
+        return $class;
+    }
+
+    private function accesGeneric($data, $key){
+        if(is_array($data)) return $data[$key] ?? null;
+        if(is_object($data)) return $data->{$key} ?? null;
+        return null;
+    }
+
 
     /**
      * Elimina un document de mongo
@@ -374,7 +409,7 @@ abstract class AbstractRepository
     protected function getTypeMap(): array
     {
         return [
-            'typeMap' => [ 'root' => $this->modelClass() ]
+            'typeMap' => [ 'root' => $this->discriminatorMap ? 'object' : $this->modelClass() ]
         ];
     }
 

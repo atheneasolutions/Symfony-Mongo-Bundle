@@ -13,18 +13,10 @@ services:
   Athenea\Mongo\Service\MongoService:
     alias: athenea.mongo.mongo_service
   
-  athenea.mongo.mongo_base.normalizer:
-    class: Athenea\Mongo\Serializer\MongoBase\MongoBaseNormalizer
-    tags: ['serializer.normalizer']
-    arguments:
-      $normalizer: '@?serializer.normalizer.object'
-  Athenea\Mongo\Serializer\MongoBase\MongoBaseNormalizer:
-    alias: athenea.mongo.mongo_base.normalizer
-  
   athenea.mongo.object_id.normalizer:
     class: Athenea\Mongo\Serializer\MongoObjectId\MongoObjectIdNormalizer
     tags: ['serializer.normalizer']
-  Athenea\Mongo\Serializer\MongoObjectIdNormalizer\MongoBaseNormalizer:
+  Athenea\Mongo\Serializer\MongoObjectIdNormalizer\MongoObjectIdNormalizer:
     alias: athenea.mongo.object_id.normalizer
 
   athenea.mongo.object_id.denormalizer:

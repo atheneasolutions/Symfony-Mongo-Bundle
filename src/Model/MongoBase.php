@@ -2,7 +2,6 @@
 
 namespace Athenea\Mongo\Model;
 
-use Athenea\Mongo\Serializer\MongoBase\MongoBaseNormalizer;
 use Athenea\MongoLib\Attribute\BsonSerialize;
 use Athenea\MongoLib\Model\Base;
 use DateTime;
@@ -19,27 +18,22 @@ use Symfony\Component\Serializer\Annotation\Groups;
  */
 abstract class MongoBase extends Base {
 
-    private const SER = MongoBaseNormalizer::SERIALIZABLE;
     /**
      * Identificador mongo únic
      */
-    #[BsonSerialize(name: "_id")]
-    #[Groups([self::SER])]
-    
+    #[BsonSerialize(name: "_id")]    
     protected ?ObjectId $id;
 
     /**
      * Data de creació
      */
     #[BsonSerialize]
-    #[Groups([self::SER])]
     protected DateTime $createdAt;
 
     /**
      * Data d'actualització
      */
     #[BsonSerialize]
-    #[Groups([self::SER])]
     protected DateTime $updatedAt;
 
 
