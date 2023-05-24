@@ -44,6 +44,21 @@ class MongoService
     }
 
     /**
+     * Retorna la url de connexió a mongo
+     *
+     * @return string la url de mongo
+     */
+    public function getUrl(): string
+    {
+        return $this->url;
+    }
+
+    public function getClient(): Client
+    {
+        return $this->mongoClient;
+    }
+
+    /**
      * Seleccionar una col·lecció d'una BBDD
      * 
      * @param string $collection Nom de la col·lecció
