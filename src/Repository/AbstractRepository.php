@@ -278,12 +278,12 @@ abstract class AbstractRepository
         }
     }
 
-    public function aggregate(array $pipeline, array $options = []){
+    public function aggregate(array $pipeline, array $options = [], ?AbstractRepository $targetRepo = null){
         $this->mergeTypeMapOptions($options);
         $result =  $this->getCollection()->aggregate($pipeline, $options);
         foreach($result as $r){
             $n = $this->normalizeGeneric($r);
-            $object = $this->bsonNormalizeGeneric($n);
+            $object =($targetRepo ?? $this)->bsonNormalizeGeneric($n);
             yield $object;
         }
     }
