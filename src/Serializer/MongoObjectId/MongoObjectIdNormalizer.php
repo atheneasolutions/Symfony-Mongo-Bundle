@@ -33,4 +33,9 @@ class MongoObjectIdNormalizer implements NormalizerInterface
     {
         return $data instanceof ObjectId;
     }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [ObjectId::class => true];
+    }
 }

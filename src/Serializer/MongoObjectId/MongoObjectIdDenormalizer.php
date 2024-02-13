@@ -44,4 +44,9 @@ class MongoObjectIdDenormalizer implements DenormalizerInterface
         if(is_string($data)) return new ObjectId($data);
         return $this->denormalizer?->denormalize($data, $type, $format, $context);
     }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [ObjectId::class => true];
+    }
 }
