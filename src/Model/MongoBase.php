@@ -6,7 +6,6 @@ use Athenea\MongoLib\Attribute\BsonSerialize;
 use Athenea\MongoLib\Model\Base;
 use DateTime;
 use MongoDB\BSON\ObjectId;
-use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * Classe que representa un document de Mongo base amb camps comuns a tots els documents que fem a EMC

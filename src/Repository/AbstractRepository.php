@@ -16,7 +16,9 @@ use MongoDB\InsertOneResult;
 use MongoDB\Operation\FindOneAndReplace;
 use MongoDB\UpdateResult;
 use ReflectionClass;
-use Symfony\Component\Serializer\Annotation\DiscriminatorMap;
+use Symfony\Component\Serializer\Annotation\DiscriminatorMap as OldDiscriminatorMap;
+use Symfony\Component\Serializer\Attribute\DiscriminatorMap;
+
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -41,7 +43,7 @@ abstract class AbstractRepository
      */
     protected Collection $collection;
 
-    protected ?DiscriminatorMap $discriminatorMap = null;
+    protected DiscriminatorMap|OldDiscriminatorMap|null $discriminatorMap = null;
     protected bool $classIsAbstract = false;
 
     /**
@@ -59,7 +61,7 @@ abstract class AbstractRepository
         $this->collection = $this->mongo->selectCollection($colName);
 
         $reflectionClass = new ReflectionClass($class);
-        $discr = $reflectionClass->getAttributes(DiscriminatorMap::class)[0] ?? null;
+        $discr = $reflectionClass->getAttributes(DiscriminatorMap::class)[0] ?? $reflectionClass->getAttributes(OldDiscriminatorMap::class)[0] ?? null;
         if($discr) $this->discriminatorMap = $discr->newInstance();
         $this->classIsAbstract = $reflectionClass->isAbstract();
 
