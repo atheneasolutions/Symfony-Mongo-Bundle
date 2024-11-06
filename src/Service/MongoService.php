@@ -13,23 +13,28 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 use function MongoDB\Driver\Monitoring\addSubscriber;
+use function MongoDB\Driver\Monitoring\removeSubscriber;
 
 /**
- * Servei per interectuar amb mongoDB de forma senzilla
+ * Service to interact with MongoDB in a simplified way
  */
 class MongoService
 {
-
     /**
-     * Client de mongo
+     * MongoDB client instance
      */
     public Client $mongoClient;
 
+    // Optional subscriber for MongoDB query logging
+    private ?MongoQuerySubscriber $subscriber = null;
+
     /**
-     * @param string $url url de mongo
-     * @param string $defaultDb base de dades a connectar-se per defecte
-     * @param string $log si cal fer logging de les queries de mongo o no
-     * @param ?LoggerInterface $logger Logger de symfony
+     * Constructor to initialize the MongoDB client and optionally add a logging subscriber
+     *
+     * @param string $url MongoDB URL
+     * @param string $defaultDb Default database to connect
+     * @param bool $log Enable logging of MongoDB queries
+     * @param ?LoggerInterface $logger Symfony logger
      */
     public function __construct(
         private string $url,
@@ -40,64 +45,74 @@ class MongoService
     )
     {
         $this->mongoClient = new Client($url);
-        if($log && $this->logger) addSubscriber(new MongoQuerySubscriber($logger, $stopwatch));
+        if ($log && $this->logger) {
+            $this->subscriber = new MongoQuerySubscriber($logger, $stopwatch);
+            addSubscriber($this->subscriber);
+        } 
     }
 
     /**
-     * Retorna la url de connexió a mongo
+     * Get the MongoDB connection URL
      *
-     * @return string la url de mongo
+     * @return string MongoDB URL
      */
     public function getUrl(): string
     {
         return $this->url;
     }
 
+    /**
+     * Get the MongoDB client instance
+     *
+     * @return Client MongoDB client
+     */
     public function getClient(): Client
     {
         return $this->mongoClient;
     }
 
     /**
-     * Seleccionar una col·lecció d'una BBDD
+     * Select a specific collection in a database
      * 
-     * @param string $collection Nom de la col·lecció
-     * @param string $db Nom de la bbdd, per defecte defaultDb del servei
+     * @param string $collection Collection name
+     * @param string|null $db Database name, defaults to the service's default database
      */
-    public function selectCollection(string $collection, ?string $db = null){
-        if(is_null($db)) $db = $this->defaultDb;
+    public function selectCollection(string $collection, ?string $db = null)
+    {
+        if (is_null($db)) $db = $this->defaultDb;
         return $this->mongoClient->selectCollection($db, $collection);
     }
 
     /**
-     * Retorna la BBDD per defecte
+     * Get the default database instance
      * 
-     * @return Database default DB
+     * @return Database Default database
      */
-    public function getDefaultDb(){
+    public function getDefaultDb()
+    {
         return $this->mongoClient->selectDatabase($this->defaultDb);
     }
 
     /**
-     * Puja un fitxer en base64 a GridFS
+     * Upload a file to GridFS using a base64-encoded string
      * 
-     * @param string $filename nom del fitxer
-     * @param string $base64 representació binària en base64 del fitxer
-     * @param array $metadata metadata a afegir al fitxer
-     * @param array $options opcions a passar a gridFS
-     * @return ObjectId id del fitxer inserit
+     * @param string $filename Name of the file
+     * @param string $base64 Base64 binary representation of the file
+     * @param array $metadata Metadata to attach to the file
+     * @param array $options Options for GridFS upload
+     * @return ObjectId ID of the uploaded file
      */
     public function uploadBase64File(string $filename, string $base64, array $metadata = [], array $options = []): ObjectId
     {
         $options['metadata'] = $metadata;
-        $stream = fopen("data://$base64",'r');
+        $stream = fopen("data://$base64", 'r');
         return $this->gridFsBucket()->uploadFromStream($filename, $stream, $options);
     }
 
     /**
-     * Obté el contenidor de GridFS de la base de dades per defecte
+     * Get the GridFS bucket for the default database
      * 
-     * @return Bucket contenidor de gridFS
+     * @return Bucket GridFS bucket
      */
     public function gridFsBucket(): Bucket
     {
@@ -105,80 +120,93 @@ class MongoService
     }
 
     /**
-     * Elimina un fitxer de gridFS
+     * Mark a file as deleted and remove it from GridFS
      * 
-     * @param ObjectId $id id de fitxer a eliminar
+     * @param ObjectId $id File ID to delete
      */
-    public function deleteFile(ObjectId $id){
+    public function deleteFile(ObjectId $id)
+    {
+        // Mark file metadata as deleted
         $this->gridFsBucket()->getFilesCollection()->updateOne(['_id' => $id], ['$set' => ['metadata.deleted' => true]]);
+        // Physically delete the file from GridFS
         $this->gridFsBucket()->delete($id);
     }
 
     /**
-     * Retorna una resposta de symfony per descarregar un fitxer de gridFS
+     * Generate a Symfony response to download a file from GridFS
      * 
-     * Admet el paràmetre 'range' per descarregar el binari per parts (ho usen navegadors moderns en videos i fitxers)
-     * @param Request $request petició de symfony per descarregar el fitxer
-     * @param ObjectId $fileId id del fitxer a descarregar
-     * @param string $mimeType tipus MIME del fitxer a descarregar
-     * @return Response resposta de symfony per descarregar el fitxer
+     * Supports 'range' parameter to enable partial content delivery (useful for video streaming)
+     * @param Request $request Symfony request to download the file
+     * @param ObjectId $fileId ID of the file to download
+     * @param string $mimeType MIME type of the file to download
+     * @return Response Symfony response for file download
      */
     public function mongoBinaryFileResponse(Request $request, ObjectId $fileId, string $mimeType): Response
     {
         $stream = $this->gridFsBucket()->openDownloadStream($fileId);
-        $metadata =  $this->gridFsBucket()->getFileDocumentForStream($stream);
+        $metadata = $this->gridFsBucket()->getFileDocumentForStream($stream);
+        
+        // Handle 'range' requests for partial downloads
         $range = $request->headers->get('range', null);
         $start = null;
         $end = null;
-        if($range){
+        if ($range) {
             $parts = explode("bytes=", $range);
             $range = $parts[1] ?? null;
-            if(!is_null($range)){
+            if (!is_null($range)) {
                 $parts = explode('-', $range);
-                if(sizeof($parts) == 2){
-                    $start = trim($parts[0]);
-                    if($start === "") $start = null;
-                    else $start = intval($start);
-                    $end = trim($parts[1]);
-                    if($end === "") $end = null;
-                    else $end = intval($end);
+                if (sizeof($parts) == 2) {
+                    $start = trim($parts[0]) !== "" ? intval($parts[0]) : null;
+                    $end = trim($parts[1]) !== "" ? intval($parts[1]) : null;
                 }
             }
         }
-        
+
         $response = new Response();
-        $contentLenght = $metadata->length;
+        $contentLength = $metadata->length;
+
+        // Respond to HEAD requests without content, just headers
         if ($request->getMethod() === "HEAD") {
             $response->headers->set("accept-ranges", "bytes");
-            $response->headers->set("content-length", $contentLenght);
+            $response->headers->set("content-length", $contentLength);
             return $response;
         }
 
-        $retrievedLength = null;
-        if(!is_null($start) && !is_null($end)) $retrievedLength = ($end + 1) - $start;
-        else if(!is_null($start)) $retrievedLength = $contentLenght - $start;
-        else if(!is_null($end)) $retrievedLength = ($end + 1);
-        else $retrievedLength = $contentLenght;
+        // Calculate content length based on range headers
+        $retrievedLength = $contentLength;
+        if (!is_null($start) && !is_null($end)) $retrievedLength = ($end + 1) - $start;
+        else if (!is_null($start)) $retrievedLength = $contentLength - $start;
+        else if (!is_null($end)) $retrievedLength = ($end + 1);
 
-        $statusCode = ! is_null($start) || ! is_null($end) ? 206 : 200;
+        $statusCode = (!is_null($start) || !is_null($end)) ? 206 : 200;
         $response->setStatusCode($statusCode);
         $response->headers->set('content-type', $mimeType);
         $response->headers->set('content-length', $retrievedLength);
-        if(!is_null($range)){
-            $bytesFirst = ($start ?? 0);
-            $bytesLast = ($end ?? ($contentLenght - 1));
+
+        if (!is_null($range)) {
+            $bytesFirst = $start ?? 0;
+            $bytesLast = $end ?? ($contentLength - 1);
             $response->headers->set('accept-ranges', "bytes");
-            $response->headers->set('content-range', "bytes $bytesFirst-$bytesLast/$contentLenght");
+            $response->headers->set('content-range', "bytes $bytesFirst-$bytesLast/$contentLength");
         }
-        $offset = 0;
-        $length = $contentLenght;
-        if(!is_null($start)) $offset = $start;
-        if(!is_null($end)) $length = $end + 1;
-        $contents = stream_get_contents($stream, $length, $offset);
+
+        // Set content and return response
+        $contents = stream_get_contents($stream, $retrievedLength, $start ?? 0);
         $response->setContent($contents);
         return $response;
     }
 
+    /**
+     * Upload a file with specific metadata to GridFS
+     *
+     * @param string $name File name
+     * @param resource $file File resource to upload
+     * @param string $mime MIME type
+     * @param string $app Application name associated with the file
+     * @param string $tag File tag for categorization
+     * @param string $user User associated with the file
+     * @return ObjectId|null ID of the uploaded file
+     */
     public function uploadFile(string $name, $file, string $mime, string $app, string $tag, string $user): ?ObjectId
     {
         return $this->gridFsBucket()->uploadFromStream($name, $file, [
@@ -191,9 +219,30 @@ class MongoService
         ]);
     }
 
-    public function fileMetadata(ObjectId $id){
-        $doc = $this->gridFsBucket()->findOne(['_id' => $id], options: ['typeMap' => ['root' => 'array', 'document' => 'array', 'array' => 'array']]);
-        return $doc;
+    /**
+     * Retrieve metadata for a specific file
+     *
+     * @param ObjectId $id File ID
+     * @return array|null File metadata document
+     */
+    public function fileMetadata(ObjectId $id)
+    {
+        return $this->gridFsBucket()->findOne(['_id' => $id], options: ['typeMap' => ['root' => 'array', 'document' => 'array', 'array' => 'array']]);
     }
 
+    /**
+     * Disable logging of MongoDB queries
+     */
+    public function disableLogging()
+    {
+        removeSubscriber($this->subscriber);
+    }
+
+    /**
+     * Enable logging of MongoDB queries
+     */
+    public function enableLogging()
+    {
+        addSubscriber($this->subscriber);
+    }
 }
