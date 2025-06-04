@@ -45,7 +45,7 @@ class MongoQuerySubscriber implements CommandSubscriber
             'operationId' => $event->getOperationId(),
             'requestId' => $event->getRequestId(),
             'database' => $event->getDatabaseName(),
-            'server' => $event->getServer()
+            'server' => $event->getServerConnectionId()
         ];
 
         // Apply filter and add filtered command to the context
@@ -84,7 +84,8 @@ class MongoQuerySubscriber implements CommandSubscriber
                 'operationId' => $event->getOperationId(),
                 'requestId' => $event->getRequestId(),
                 'durationMicros' => $event->getDurationMicros(),
-                'server' => $event->getServer()
+                'server' => $event->getServerConnectionId()
+
             ]
         );
     }
@@ -105,7 +106,7 @@ class MongoQuerySubscriber implements CommandSubscriber
                 'operationId' => $event->getOperationId(),
                 'requestId' => $event->getRequestId(),
                 'durationMicros' => $event->getDurationMicros(),
-                'server' => $event->getServer(),
+                'server' => $event->getServerConnectionId(),
                 'error' => $event->getError()
             ]
         );
