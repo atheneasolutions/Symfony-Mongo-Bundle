@@ -20,7 +20,7 @@
     ],
     "require": {
         "php": ">=8.0",
-        "athenea/mongo-lib": "^8.0",
+        "athenea/mongo-lib": "^8.0.1",
         "symfony/config": "^7.0 || ^8.0",
         "symfony/dependency-injection": "^7.0 || ^8.0",
         "symfony/http-kernel": "^7.0 || ^8.0",

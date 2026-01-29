@@ -292,9 +292,9 @@ abstract class AbstractRepository
 
     protected function getDiscriminatorClass($data){
         if(!$this->discriminatorMap) return $this->modelClass();
-        $property = $this->discriminatorMap->getTypeProperty();
+        $property = $this->discriminatorMap->typeProperty;
         $field = $this->accesGeneric($data, $property);
-        $class = $this->discriminatorMap->getMapping()[$field] ?? null;
+        $class = $this->discriminatorMap->mapping[$field] ?? null;
         if(!$class && !$this->classIsAbstract) return $this->modelClass();
         return $class;
     }
