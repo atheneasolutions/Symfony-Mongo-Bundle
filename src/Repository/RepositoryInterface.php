@@ -10,13 +10,13 @@ use MongoDB\UpdateResult;
 
 interface RepositoryInterface
 {
-    public function findById(string $id): ?MongoBase;
-    public function findByObjectId(ObjectId $id): ?MongoBase;
+    public function findById(string $id);
+    public function findByObjectId(ObjectId $id);
     public function find(array $filter = [], array $options = []);
     public function findOne(array $filter = [], array $options = []): ?MongoBase;
 
     public function insertOne(?MongoBase $doc = null, array $options = []): InsertOneResult;
-    public function insertMany(array $docs = null, array $options = []): InsertManyResult;
+    public function insertMany(?array $docs = null, array $options = []): InsertManyResult;
 
     public function updateOne(array $filter = [], array $update = [], array $options = []): UpdateResult;
     public function updateMany(array $filter = [], array $update = [], array $options = []): UpdateResult;
@@ -26,6 +26,6 @@ interface RepositoryInterface
     public function findAndReplace(array $filter = [], ?MongoBase $doc = null, array $options = []): ?MongoBase;
     public function replace(?MongoBase $doc = null, array $options = []): ?MongoBase;
 
-    public function reHydrate(MongoBase $doc, bool $bson = false): void;
+    public function reHydrate(MongoBase $doc, bool $bson = false);
     public function deleteDoc(MongoBase $doc, array $options = []);
 }
