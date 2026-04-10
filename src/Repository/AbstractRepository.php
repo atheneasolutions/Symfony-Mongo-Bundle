@@ -34,7 +34,7 @@ use function Athenea\Utils\Array\array_is_assoc;
  * 
  * @author Lluc Bové <lluc.bove@atheneasolutions.com>
  */
-abstract class AbstractRepository
+abstract class AbstractRepository implements RepositoryInterface
 {
     public const UPDATEABLE = 'updateable';
 
